@@ -1,6 +1,7 @@
 const axios = require("axios");
 const knex = require("../models/knex.js");
 const transferFunds = require("../utils/ravenTransfer.js");
+const handleWebhook = require("./webhook.controller.js");
 exports.depositMoney = async (req, res) => {
   try {
     const user_id = req.user.id;
@@ -47,7 +48,11 @@ exports.depositMoney = async (req, res) => {
 
     console.log("Before update:", account.balance, typeof account.balance);
     console.log("Updated account:", updatedAccount);
-
+    await handleWebhook({
+      type: "deposit",
+      account: updatedAccount.account_number,
+      amount,
+    });
     res.status(201).json({
       message: "Deposit handled successfully",
       data: {
@@ -73,7 +78,7 @@ exports.transferMoney = async (req, res) => {
       bank_code,
     } = req.body;
     if (
-      amount ||
+      !amount ||
       !account_number ||
       !bank ||
       !account_name ||
@@ -85,7 +90,7 @@ exports.transferMoney = async (req, res) => {
           "amount, account_number, bank_code, bank, account_name, narration are required fields",
       });
     }
-    console.log(r)
+    console.log(req.body);
     //Fetching account
     const userAccount = await knex("accounts").where({ user_id });
     if (!userAccount || userAccount.balance < parseFloat(amount))
@@ -93,15 +98,18 @@ exports.transferMoney = async (req, res) => {
         .status(400)
         .json({ error: "Insufficient balance or account not found" });
 
-    const request = await transferFunds({
-      amount: amount.toString(),
-      bank_code: bank_code,
-      bank: bank.toString(),
-      account_number: account_number.toString(),
-      account_name: account_name.toString(),
-      narration: narration.toString(),
-      reference: reference.toString() || user_id,
-    });
+    const request = await transferFunds(
+      {
+        amount: String(amount),
+        bank_code: String(bank_code),
+        bank: String(bank),
+        account_number: String(account_number),
+        account_name: String(account_name),
+        narration: String(narration),
+        reference: String(reference) || user_id,
+      },
+      res
+    );
     //Create a transaction model for the transaction
     await knex("transactions").insert({
       user_id,
@@ -133,6 +141,11 @@ exports.transferMoney = async (req, res) => {
       .update({
         balance: parseFloat(userAccount.balance) - parseFloat(amount),
       });
+    await handleWebhook({
+      type: "transfer",
+      data: request,
+      status: request.status,
+    });
     res
       .status(201)
       .json({ message: "Transfer successfull", response: request });
@@ -143,20 +156,18 @@ exports.transferMoney = async (req, res) => {
 exports.getTransactionHistory = async (req, res) => {
   try {
     const userId = req.user.id;
+
     // Fetch all transactions with type and account info
     const transactions = await knex("transactions")
-      .join("accounts", "transactions.account_id", "accounts.id")
-      .where("accounts.user_id", userId)
-      .select("transactions.*")
-      .orderBy("transactions.created_at", "desc"); // Ordering by date
+      .where("user_id", userId)
+      .select("*")
+      .orderBy("id", "desc"); // Ordering by the id
 
-    // Grouping transactions by type here
+    // Grouping transactions by type
     const groupedTransactions = transactions.reduce((acc, transaction) => {
-      // Checking if transaction type already exists in accumulator
       if (!acc[transaction.type]) {
         acc[transaction.type] = [];
       }
-      // Pushing transactions to their types
       acc[transaction.type].push(transaction);
       return acc;
     }, {});
@@ -167,7 +178,7 @@ exports.getTransactionHistory = async (req, res) => {
   }
 };
 
-//Using this to retrieve all bank codes for test case
+//Using this to retrieve all bank codes for test case incase i forget
 exports.retrieveBankCodes = async (req, res) => {
   try {
     const response = await axios.get(

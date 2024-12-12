@@ -1,7 +1,7 @@
 const axios = require("axios");
 const qs = require("qs");
 
-const transferFunds = async (transferData) => {
+const transferFunds = async (transferData, res) => {
   try {
     // Incase i forget to stringify the data and return here
     const data = qs.stringify({
@@ -27,11 +27,19 @@ const transferFunds = async (transferData) => {
     // Make the POST request
     const response = await axios(config);
     console.log(JSON.stringify(response.data));
-
+    if (!response.ok) {
+      return res.status(400).json({ error: response });
+    }
     return response.data; //Returns the response
   } catch (error) {
-    console.error("Error occurred during transfer:", error.message);
-    return { error: error.message };
+    res
+      .status(401)
+      .json({ error: error.response.data.message || error.message });
+    console.error(
+      "Error occurred during transfer:",
+      error.response.data.message
+    );
+    return { error: error };
   }
 };
 module.exports = transferFunds;
