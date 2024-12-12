@@ -171,7 +171,7 @@ exports.getTransactionHistory = async (req, res) => {
       acc[transaction.type].push(transaction);
       return acc;
     }, {});
-
+    await handleWebhook(groupedTransactions);
     res.status(200).json({ groupedTransactions });
   } catch (error) {
     res.status(500).json({ error: error.message });
