@@ -1,5 +1,7 @@
 // Update with your config settings.
 
+const knex = require("knex");
+
 /**
  * @type { Object.<string, import("knex").Knex.Config> }
  */

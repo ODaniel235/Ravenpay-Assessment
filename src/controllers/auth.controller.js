@@ -1,9 +1,12 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const knex = require("../../knexfile");
+const knex = require("../models/knex.js");
+const signToken = require("../utils/utils.js");
 exports.signup = async (req, res) => {
   try {
     const { password, email } = req.body;
+    console.log(knex);
+    console.log(req.body);
     if (!password || !email)
       return res
         .status(400)
@@ -14,12 +17,15 @@ exports.signup = async (req, res) => {
       return res
         .status(400)
         .json({ error: "Email is already linked to an account" });
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const userData = await knex("users").insert({
+    const hashedPassword = await bcrypt.hash(password, 12); //Hashing password before saving to database
+    await knex("users").insert({
       email,
       password: hashedPassword,
     });
-    res.status(200).json({ message: "Account created successfully", userData });
+    res.status(201).json({
+      message: "Account created successfully",
+      userData: { email, password: hashedPassword },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -32,13 +38,12 @@ exports.login = async (req, res) => {
         .status(400)
         .json({ error: "email and password are required fields" });
     const user = await knex("users").where({ email }).first();
-    const credentialsValid = await bcrypt.compare(password, user.password);
+    const credentialsValid = await bcrypt.compare(password, user.password); //Comparing hashed password with inputted password
     if (!user || !credentialsValid)
       return res.status(401).json({ error: "Invalid credentials" });
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
-    res.status(200).json({ message: "Logged in successfully", token });
+
+    const tokens = await signToken(user.id, user.email, res);
+    res.status(200).json({ message: "Logged in successfully", tokens });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
