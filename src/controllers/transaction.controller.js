@@ -156,6 +156,22 @@ exports.transferMoney = async (req, res) => {
     await handleWebhook(
       `Transafer to account number ${account_number} failed because ${err.message}`
     );
+    const [transaction] = await knex("transactions")
+      .where({ user_id, amount: parseFloat(amount), type: "transfer" })
+      .orderBy("id", "desc")
+      .limit(1);
+
+    await knex("transfers").insert({
+      user_id: userAccount.id,
+      transaction_id: transaction.id,
+      amount: parseFloat(amount),
+      account_number: account_number.toString(),
+      account_name: account_name.toString(),
+      bank: bank.toString(),
+      narration: narration.toString(),
+      reference: reference.toString(),
+      status: "failed",
+    });
     res.status(500).json({ error: err.message });
   }
 };

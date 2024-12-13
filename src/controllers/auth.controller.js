@@ -23,11 +23,10 @@ exports.signup = async (req, res) => {
       email,
       password: hashedPassword,
       account_number,
-      balance: 0.0,
     });
     await handleWebhook({
       message: "Welcome onboard",
-      data: { email, password, account_number, balance },
+      data: { email, password, account_number },
     });
     res.status(201).json({
       message: "Account created successfully",
