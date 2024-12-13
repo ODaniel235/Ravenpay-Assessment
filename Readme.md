@@ -1,3 +1,8 @@
+clone
+install all packages and dependencies 
+run npx knex migrate:latest
+run npm run dev
+
 .env
 DB_PORT=
 DB_HOST=
