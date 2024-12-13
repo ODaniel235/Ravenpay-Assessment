@@ -153,7 +153,7 @@ exports.transferMoney = async (req, res) => {
       .status(201)
       .json({ message: "Transfer successfull", response: request });
   } catch (err) {
-    handleWebhook({
+    await handleWebhook({
       message: `Transafer to account number ${account_number} failed because ${err.message}`,
     });
     await knex("transactions").insert({
