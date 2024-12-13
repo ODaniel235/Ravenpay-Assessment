@@ -24,7 +24,7 @@ exports.signup = async (req, res) => {
       password: hashedPassword,
       account_number,
     });
-    handleWebhook({
+    await handleWebhook({
       message: "Welcome onboard",
       data: { email, password, account_number },
     });
@@ -54,7 +54,7 @@ exports.login = async (req, res) => {
       user.account_number,
       res
     );
-    handleWebhook({
+    await handleWebhook({
       message: "Login detected",
       data: {
         email: user.email,

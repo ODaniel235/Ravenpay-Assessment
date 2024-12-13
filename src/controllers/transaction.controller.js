@@ -42,7 +42,7 @@ exports.depositMoney = async (req, res) => {
 
     console.log("Before update:", user.balance, typeof user.balance);
     console.log("Updated account:", updatedAccount);
-    handleWebhook({
+    await handleWebhook({
       message: `Deposit of ${numericalAmount} to your account successful`,
       data: {
         account: updatedAccount.account_number,
@@ -140,7 +140,7 @@ exports.transferMoney = async (req, res) => {
       .update({
         balance: parseFloat(userAccount.balance) - parseFloat(amount),
       });
-    handleWebhook(
+    await handleWebhook(
       `New transfer to ${account_number} Successful, your new balance is ${parseFloat(
         userAccount.balance - parseFloat(amount)
       )}` /* {
@@ -199,7 +199,7 @@ exports.getTransactionHistory = async (req, res) => {
       acc[transaction.type].push(transaction);
       return acc;
     }, {});
-    handleWebhook({
+    await handleWebhook({
       type: "Transaction histore",
       history: groupedTransactions,
     });
