@@ -1,11 +1,11 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const knex = require("../models/knex.js");
 const signToken = require("../utils/utils.js");
+const handleWebhook = require("./webhook.controller.js");
 exports.signup = async (req, res) => {
   try {
     const { password, email } = req.body;
-    console.log(knex);
     console.log(req.body);
     if (!password || !email)
       return res
@@ -18,13 +18,17 @@ exports.signup = async (req, res) => {
         .status(400)
         .json({ error: "Email is already linked to an account" });
     const hashedPassword = await bcrypt.hash(password, 12); //Hashing password before saving to database
+    const account_number = crypto.randomBytes(8).toString("hex");
     await knex("users").insert({
       email,
       password: hashedPassword,
+      account_number,
+      balance: 0.0,
     });
+    await handleWebhook("Welcome onboard");
     res.status(201).json({
       message: "Account created successfully",
-      userData: { email, password: hashedPassword },
+      userData: { email, password: hashedPassword, account_number },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -42,7 +46,13 @@ exports.login = async (req, res) => {
     if (!user || !credentialsValid)
       return res.status(401).json({ error: "Invalid credentials" });
 
-    const tokens = await signToken(user.id, user.email, res);
+    const tokens = await signToken(
+      user.id,
+      user.email,
+      user.account_number,
+      res
+    );
+    await handleWebhook("Login detected");
     res.status(200).json({ message: "Logged in successfully", tokens });
   } catch (err) {
     res.status(500).json({ error: err.message });

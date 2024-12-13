@@ -7,6 +7,8 @@ exports.up = function (knex) {
     table.increments("id").primary();
     table.string("email").notNullable().unique();
     table.string("password").notNullable();
+    table.string("account_number").unique().notNullable();
+    table.decimal("balance", 14, 2).defaultTo(0.0).notNullable();
     table.timestamps(true, true);
   });
 };

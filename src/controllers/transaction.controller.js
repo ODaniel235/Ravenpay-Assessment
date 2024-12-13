@@ -5,18 +5,13 @@ const handleWebhook = require("./webhook.controller.js");
 exports.depositMoney = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const { account_number, amount } = req.body;
-    if (!account_number || !amount)
-      return res
-        .status(400)
-        .json({ error: "account_number and amount are required fields" });
+    console.log(req.user);
+    const { amount } = req.body;
+    if (!amount)
+      return res.status(400).json({ error: "amount is a required field" });
 
     const numericalAmount = parseFloat(amount);
-    const account = await knex("accounts").where({ account_number }).first();
-    if (!account) {
-      return res.status(404).json({ error: "Account not found" });
-    }
-
+    const [user] = await knex("users").where({ id: user_id });
     // Insert into transactions and get the transaction id
     await knex("transactions").insert({
       user_id,
@@ -31,28 +26,25 @@ exports.depositMoney = async (req, res) => {
 
     console.log(transaction);
     // Insert into deposit table
+    console.log(user);
     await knex("deposits").insert({
-      account_id: account.id,
+      user_id: user_id,
       transaction_id: transaction.id,
       amount: numericalAmount,
     });
 
     // Update account balance
-    await knex("accounts")
-      .where({ id: account.id })
-      .update({ balance: parseFloat(account.balance) + numericalAmount });
+    console.log(user.balance);
+    await knex("users")
+      .where({ id: user_id })
+      .update({ balance: parseFloat(user.balance) + numericalAmount });
+    const updatedAccount = await knex("users").where({ id: user_id }).first();
 
-    const updatedAccount = await knex("accounts")
-      .where({ id: account.id })
-      .first();
-
-    console.log("Before update:", account.balance, typeof account.balance);
+    console.log("Before update:", user.balance, typeof user.balance);
     console.log("Updated account:", updatedAccount);
-    await handleWebhook({
-      type: "deposit",
-      account: updatedAccount.account_number,
-      amount,
-    });
+    await handleWebhook(
+      `Deposit of ${numericalAmount} to your account successful`
+    );
     res.status(201).json({
       message: "Deposit handled successfully",
       data: {
@@ -92,12 +84,15 @@ exports.transferMoney = async (req, res) => {
     }
     console.log(req.body);
     //Fetching account
-    const userAccount = await knex("accounts").where({ user_id });
-    if (!userAccount || userAccount.balance < parseFloat(amount))
+    const userAccount = await knex("users").where({ id: user_id });
+    if (!userAccount || userAccount.balance < parseFloat(amount)) {
+      handleWebhook(
+        `Transfer to ${account_number} failed  due to insufficient funds`
+      );
       return res
         .status(400)
         .json({ error: "Insufficient balance or account not found" });
-
+    }
     const request = await transferFunds(
       {
         amount: String(amount),
@@ -125,7 +120,7 @@ exports.transferMoney = async (req, res) => {
     console.log(transaction);
     //Creating a new transfer model and making sure everything is converted to the right data type
     await knex("transfers").insert({
-      account_id: userAccount.id,
+      user_id: userAccount.id,
       transaction_id: transaction.id,
       amount: parseFloat(amount),
       account_number: account_number.toString(),
@@ -136,16 +131,20 @@ exports.transferMoney = async (req, res) => {
       status: request.status,
     });
     //Deducting amount
-    await knex("accounts")
+    await knex("users")
       .where({ id: userAccount.id })
       .update({
         balance: parseFloat(userAccount.balance) - parseFloat(amount),
       });
-    await handleWebhook({
+    await handleWebhook(
+      `New transfer to ${account_number} Successful, your new balance is ${parseFloat(
+        userAccount.balance - parseFloat(amount)
+      )}` /* {
       type: "transfer",
       data: request,
       status: request.status,
-    });
+    } */
+    );
     res
       .status(201)
       .json({ message: "Transfer successfull", response: request });

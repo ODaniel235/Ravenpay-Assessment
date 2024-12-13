@@ -15,11 +15,12 @@ module.exports = (req, res, next) => {
       next();
     } else {
       const decoded = jwt.verify(RefreshToken, process.env.JWT_SECRET);
-      if (!decoded) return res.statue(401).json({ error: "Unauthorized" });
+      if (!decoded) return res.status(401).json({ error: "Unauthorized" });
       const accessToken = jwt.sign(
         {
-          id: jwt.decoded.id,
+          id: decoded.id,
           email: decoded.email,
+          account_number: decoded.account_number,
         },
         process.env.JWTSECRET,
         { expiresIn: 60 * 1000 }

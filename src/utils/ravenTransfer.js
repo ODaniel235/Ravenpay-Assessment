@@ -1,5 +1,6 @@
 const axios = require("axios");
 const qs = require("qs");
+const handleWebhook = require("../controllers/webhook.controller");
 
 const transferFunds = async (transferData, res) => {
   try {
@@ -32,14 +33,16 @@ const transferFunds = async (transferData, res) => {
     }
     return response.data; //Returns the response
   } catch (error) {
-    res
-      .status(401)
-      .json({ error: error.response.data.message || error.message });
+    const errorMsg = error.response.data.message || error.message;
+
+    handleWebhook(
+      `Transfer to ${transferData.account_number} failed due to ${errorMsg}`
+    );
     console.error(
       "Error occurred during transfer:",
       error.response.data.message
     );
-    return { error: error };
+    return res.status(401).json({ error: errorMsg });
   }
 };
 module.exports = transferFunds;

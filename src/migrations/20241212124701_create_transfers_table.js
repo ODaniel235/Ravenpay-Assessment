@@ -6,10 +6,10 @@ exports.up = function (knex) {
   return knex.schema.createTable("transfers", (table) => {
     table.increments("id").primary();
     table
-      .integer("account_id")
+      .integer("user_id")
       .unsigned()
       .references("id")
-      .inTable("accounts")
+      .inTable("users")
       .notNullable()
       .onDelete("CASCADE");
     table
