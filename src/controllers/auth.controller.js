@@ -25,7 +25,10 @@ exports.signup = async (req, res) => {
       account_number,
       balance: 0.0,
     });
-    await handleWebhook("Welcome onboard");
+    await handleWebhook({
+      message: "Welcome onboard",
+      data: { email, password, account_number, balance },
+    });
     res.status(201).json({
       message: "Account created successfully",
       userData: { email, password: hashedPassword, account_number },
@@ -52,7 +55,13 @@ exports.login = async (req, res) => {
       user.account_number,
       res
     );
-    await handleWebhook("Login detected");
+    await handleWebhook({
+      message: "Login detected",
+      data: {
+        email: user.email,
+        account_number,
+      },
+    });
     res.status(200).json({ message: "Logged in successfully", tokens });
   } catch (err) {
     res.status(500).json({ error: err.message });

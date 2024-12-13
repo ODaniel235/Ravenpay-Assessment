@@ -2,7 +2,7 @@ const axios = require("axios");
 const qs = require("qs");
 const handleWebhook = require("../controllers/webhook.controller");
 
-const transferFunds = async (transferData, res) => {
+const transferFunds = async (transferData) => {
   try {
     // Incase i forget to stringify the data and return here
     const data = qs.stringify({
@@ -29,20 +29,14 @@ const transferFunds = async (transferData, res) => {
     const response = await axios(config);
     console.log(JSON.stringify(response.data));
     if (!response.ok) {
-      return res.status(400).json({ error: response });
+      throw new Error(response.data);
     }
     return response.data; //Returns the response
   } catch (error) {
-    const errorMsg = error.response.data.message || error.message;
+    const errorMsg = error.response?.data?.message || error.message;
+    console.error(errorMsg);
 
-    handleWebhook(
-      `Transfer to ${transferData.account_number} failed due to ${errorMsg}`
-    );
-    console.error(
-      "Error occurred during transfer:",
-      error.response.data.message
-    );
-    return res.status(401).json({ error: errorMsg });
+    throw new Error(errorMsg);
   }
 };
 module.exports = transferFunds;

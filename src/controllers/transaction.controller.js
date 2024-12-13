@@ -42,9 +42,13 @@ exports.depositMoney = async (req, res) => {
 
     console.log("Before update:", user.balance, typeof user.balance);
     console.log("Updated account:", updatedAccount);
-    await handleWebhook(
-      `Deposit of ${numericalAmount} to your account successful`
-    );
+    await handleWebhook({
+      message: `Deposit of ${numericalAmount} to your account successful`,
+      data: {
+        account: updatedAccount.account_number,
+        balance: updatedAccount.account_balance,
+      },
+    });
     res.status(201).json({
       message: "Deposit handled successfully",
       data: {
@@ -58,17 +62,17 @@ exports.depositMoney = async (req, res) => {
   }
 };
 exports.transferMoney = async (req, res) => {
+  const user_id = req.user.id;
+  const {
+    amount,
+    account_number,
+    bank,
+    account_name,
+    narration,
+    reference,
+    bank_code,
+  } = req.body;
   try {
-    const user_id = req.user.id;
-    const {
-      amount,
-      account_number,
-      bank,
-      account_name,
-      narration,
-      reference,
-      bank_code,
-    } = req.body;
     if (
       !amount ||
       !account_number ||
@@ -149,6 +153,9 @@ exports.transferMoney = async (req, res) => {
       .status(201)
       .json({ message: "Transfer successfull", response: request });
   } catch (err) {
+    await handleWebhook(
+      `Transafer to account number ${account_number} failed because ${err.message}`
+    );
     res.status(500).json({ error: err.message });
   }
 };
@@ -170,7 +177,10 @@ exports.getTransactionHistory = async (req, res) => {
       acc[transaction.type].push(transaction);
       return acc;
     }, {});
-    await handleWebhook(groupedTransactions);
+    await handleWebhook({
+      type: "Transaction histore",
+      history: groupedTransactions,
+    });
     res.status(200).json({ groupedTransactions });
   } catch (error) {
     res.status(500).json({ error: error.message });
