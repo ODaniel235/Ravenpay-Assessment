@@ -58,7 +58,7 @@ exports.login = async (req, res) => {
       message: "Login detected",
       data: {
         email: user.email,
-        account_number,
+        account_number: user.account_number,
       },
     });
     res.status(200).json({ message: "Logged in successfully", tokens });

@@ -1,7 +1,11 @@
 const axios = require("axios");
 const handleWebhook = async (webhookData) => {
   try {
-    const response = await axios.post(process.env.WEBHOOK_URL, webhookData);
+    const response = await axios.post(process.env.WEBHOOK_URL, webhookData, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     if (response.ok) {
       console.log("Webhook sent successfully", response.data);
     } else {
