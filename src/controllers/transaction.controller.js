@@ -42,7 +42,7 @@ exports.depositMoney = async (req, res) => {
 
     console.log("Before update:", user.balance, typeof user.balance);
     console.log("Updated account:", updatedAccount);
-    await handleWebhook({
+    handleWebhook({
       message: `Deposit of ${numericalAmount} to your account successful`,
       data: {
         account: updatedAccount.account_number,
@@ -105,7 +105,7 @@ exports.transferMoney = async (req, res) => {
         account_number: String(account_number),
         account_name: String(account_name),
         narration: String(narration),
-        reference: String(reference) || user_id,
+        reference: user_id,
       },
       res
     );
@@ -140,7 +140,7 @@ exports.transferMoney = async (req, res) => {
       .update({
         balance: parseFloat(userAccount.balance) - parseFloat(amount),
       });
-    await handleWebhook(
+    handleWebhook(
       `New transfer to ${account_number} Successful, your new balance is ${parseFloat(
         userAccount.balance - parseFloat(amount)
       )}` /* {
@@ -153,23 +153,29 @@ exports.transferMoney = async (req, res) => {
       .status(201)
       .json({ message: "Transfer successfull", response: request });
   } catch (err) {
-    await handleWebhook(
-      `Transafer to account number ${account_number} failed because ${err.message}`
-    );
-    const [transaction] = await knex("transactions")
+    handleWebhook({
+      message: `Transafer to account number ${account_number} failed because ${err.message}`,
+    });
+    await knex("transactions").insert({
+      user_id,
+      type: "transfer",
+      amount: parseFloat(amount),
+    });
+    const [newTransaction] = await knex("transactions")
       .where({ user_id, amount: parseFloat(amount), type: "transfer" })
       .orderBy("id", "desc")
       .limit(1);
+    console.log(newTransaction);
 
     await knex("transfers").insert({
-      user_id: userAccount.id,
-      transaction_id: transaction.id,
+      user_id: user_id,
+      transaction_id: newTransaction.id,
       amount: parseFloat(amount),
       account_number: account_number.toString(),
       account_name: account_name.toString(),
       bank: bank.toString(),
       narration: narration.toString(),
-      reference: reference.toString(),
+      reference: String(user_id),
       status: "failed",
     });
     res.status(500).json({ error: err.message });
@@ -193,7 +199,7 @@ exports.getTransactionHistory = async (req, res) => {
       acc[transaction.type].push(transaction);
       return acc;
     }, {});
-    await handleWebhook({
+    handleWebhook({
       type: "Transaction histore",
       history: groupedTransactions,
     });
